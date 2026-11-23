@@ -1,20 +1,126 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tooth_time/main.dart';
 import 'package:tooth_time/camera_coach.dart';
+import 'package:tooth_time/connection/gate.dart';
+import 'support/connection_fakes.dart';
 
 void main() {
-  testWidgets('Multiple saved reminders have independent controls',
-      (tester) async {
+  testWidgets(
+    'Consent errors are actionable and empty text cannot enable linking',
+    (tester) async {
+      var attempt = 0;
+      final care = testController(
+        credentials: MemoryCredentials(),
+        respond: (r) async {
+          attempt++;
+          if (attempt == 1) return jsonReply({}, 404);
+          if (attempt == 2) return jsonReply({'version': 'v1', 'text': ''});
+          return defaultReply(r);
+        },
+      );
+      addTearDown(care.dispose);
+      await tester.pumpWidget(MaterialApp(home: LinkScreen(care: care)));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      await tester.scrollUntilVisible(
+        find.text('Холбох'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      expect(find.textContaining('үйлчилгээ олдсонгүй'), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Холбох'))
+            .onPressed,
+        isNull,
+      );
+      await tester.tap(find.text('Зөвшөөрлийг дахин татах'));
+      await tester.pump();
+      expect(find.textContaining('зөвшөөрлийн мэдээлэл буруу'), findsOneWidget);
+      expect(find.byType(CheckboxListTile), findsNothing);
+      await tester.tap(find.text('Зөвшөөрлийг дахин татах'));
+      await tester.pump();
+      expect(find.byType(CheckboxListTile), findsOneWidget);
+      expect(
+        tester
+            .widget<FilledButton>(find.widgetWithText(FilledButton, 'Холбох'))
+            .onPressed,
+        isNotNull,
+      );
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  setUp(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(
+          const MethodChannel('shudhen/device'),
+          (_) async => 'Asia/Ulaanbaatar',
+        );
+  });
+  tearDown(() {
+    TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
+        .setMockMethodCallHandler(const MethodChannel('shudhen/device'), null);
+  });
+  testWidgets('Connection requires explicit consent before exchange', (
+    tester,
+  ) async {
+    SharedPreferences.setMockInitialValues({});
+    var exchanges = 0;
+    final care = testController(
+      credentials: MemoryCredentials(),
+      respond: (r) async {
+        if (r.url.path.endsWith('/exchange')) exchanges++;
+        return defaultReply(r);
+      },
+    );
+    addTearDown(care.dispose);
+    await tester.pumpWidget(ToothTime(controller: care));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    for (int i = 0; i < 4; i++) {
+      final field = find.byType(TextFormField).at(i);
+      await tester.ensureVisible(field);
+      await tester.enterText(
+        field,
+        ['invitation', 'Parent', 'Mother', 'Phone'][i],
+      );
+    }
+    await tester.scrollUntilVisible(
+      find.text('Холбох'),
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.tap(find.text('Холбох'));
+    await tester.pump();
+    expect(exchanges, 0);
+    expect(find.text('Мэдээлэл хуваалцах зөвшөөрлөө өгнө үү.'), findsOneWidget);
+    await tester.ensureVisible(find.byType(CheckboxListTile));
+    await tester.tap(find.byType(CheckboxListTile));
+    await tester.pump();
+    await tester.ensureVisible(find.text('Холбох'));
+    await tester.tap(find.text('Холбох'));
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+    expect(exchanges, 1);
+    expect(care.connection, isNotNull);
+    await tester.pumpWidget(const SizedBox());
+  });
+  testWidgets('Multiple saved reminders have independent controls', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'doctorClients': <String>['KID-001'],
       'activeClient': 'KID-001',
       'signedIn': true,
-      'reminderTimes:KID-001':
+      'reminderTimes:$testBase#$enrollmentA':
           '[{"hour":8,"minute":0,"enabled":true},{"hour":20,"minute":30,"enabled":false}]',
     });
-    await tester.pumpWidget(const ToothTime());
+    final care = testController();
+    addTearDown(care.dispose);
+    await tester.pumpWidget(ToothTime(controller: care));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     await tester.tap(find.byTooltip('Тохиргоо'));
@@ -36,13 +142,20 @@ void main() {
   });
   testWidgets('Introduction opens and closes', (tester) async {
     SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ToothTime());
+    final care = testController();
+    addTearDown(care.dispose);
+    await tester.pumpWidget(ToothTime(controller: care));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    await tester.scrollUntilVisible(find.byTooltip('Хэрхэн угаах вэ?'), 150,
-        scrollable: find.byType(Scrollable).first);
+    await tester.tap(find.byTooltip('Тохиргоо'));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.scrollUntilVisible(
+      find.text('Хэрхэн угаах вэ?'),
+      150,
+      scrollable: find.byType(Scrollable).first,
+    );
     await tester.pump(const Duration(milliseconds: 300));
-    await tester.tap(find.byTooltip('Хэрхэн угаах вэ?'));
+    await tester.tap(find.text('Хэрхэн угаах вэ?'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Шүдхэн найзтайгаа танилцаарай ✨'), findsOneWidget);
@@ -53,32 +166,47 @@ void main() {
     expect(find.text('Шүдхэн найзтайгаа танилцаарай ✨'), findsNothing);
     await tester.pumpWidget(const SizedBox());
   });
-  testWidgets('ID login validates required fields', (tester) async {
-    SharedPreferences.setMockInitialValues({});
-    await tester.pumpWidget(const ToothTime());
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    expect(find.text('123456'), findsOneWidget);
-    await tester.enterText(find.byType(TextFormField).first, '');
-    await tester.ensureVisible(find.text('Нэвтрэх'));
-    await tester.pump();
-    await tester.pump(const Duration(seconds: 1));
-    await tester.tap(find.text('Нэвтрэх'));
-    await tester.pump();
-    expect(find.text('ID-гаа оруулна уу'), findsOneWidget);
-    await tester.pumpWidget(const SizedBox());
-  });
-  testWidgets('Start brushing opens camera directly with selectable filters',
-      (tester) async {
+  testWidgets(
+    'Demo IDs cannot sign in; invitation form validates required fields',
+    (tester) async {
+      SharedPreferences.setMockInitialValues({
+        'doctorClients': <String>['123456'],
+        'activeClient': '123456',
+        'signedIn': true,
+      });
+      final care = testController(credentials: MemoryCredentials());
+      addTearDown(care.dispose);
+      await tester.pumpWidget(ToothTime(controller: care));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text('123456'), findsNothing);
+      expect(find.byTooltip('Тохиргоо'), findsNothing);
+      await tester.scrollUntilVisible(
+        find.text('Холбох'),
+        250,
+        scrollable: find.byType(Scrollable).first,
+      );
+      await tester.pump(const Duration(seconds: 1));
+      await tester.tap(find.text('Холбох'));
+      await tester.pump();
+      expect(find.text('Урилгын код оруулна уу'), findsOneWidget);
+      await tester.pumpWidget(const SizedBox());
+    },
+  );
+  testWidgets('Start brushing opens camera directly with selectable filters', (
+    tester,
+  ) async {
     SharedPreferences.setMockInitialValues({
       'doctorClients': <String>['KID-001'],
       'activeClient': 'KID-001',
-      'signedIn': true
+      'signedIn': true,
     });
-    await tester.pumpWidget(const ToothTime());
+    final care = testController();
+    addTearDown(care.dispose);
+    await tester.pumpWidget(ToothTime(controller: care));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.text('Бяцхан найз'), findsOneWidget);
+    expect(find.text('Саруул'), findsOneWidget);
     await tester.ensureVisible(find.text('Шүдээ угаах'));
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
@@ -87,16 +215,22 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.text('🦷 Угаацгаая!'), findsOneWidget);
     expect(find.text('За, шүдээ угаая'), findsNothing);
-    await tester.scrollUntilVisible(find.text('🐱'), 200,
-        scrollable: find
-            .descendant(
-                of: find.byType(CameraCoach), matching: find.byType(Scrollable))
-            .first);
+    await tester.scrollUntilVisible(
+      find.text('🐱'),
+      200,
+      scrollable: find
+          .descendant(
+            of: find.byType(CameraCoach),
+            matching: find.byType(Scrollable),
+          )
+          .first,
+    );
     await tester.pump(const Duration(milliseconds: 400));
     await tester.tap(find.text('🐱'));
     await tester.pump();
     final kitty = tester.widget<ChoiceChip>(
-        find.ancestor(of: find.text('🐱'), matching: find.byType(ChoiceChip)));
+      find.ancestor(of: find.text('🐱'), matching: find.byType(ChoiceChip)),
+    );
     expect(kitty.selected, true);
     await tester.pumpWidget(const SizedBox());
   });

@@ -9,6 +9,7 @@ class KidHome extends StatefulWidget {
   final Map<String, dynamic> gift;
   final bool night;
   final VoidCallback onBrush, onSettings;
+  final Widget? syncStatus;
   const KidHome(
       {super.key,
       required this.name,
@@ -17,7 +18,8 @@ class KidHome extends StatefulWidget {
       required this.gift,
       required this.night,
       required this.onBrush,
-      required this.onSettings});
+      required this.onSettings,
+      this.syncStatus});
   @override
   State<KidHome> createState() => _KidHomeState();
 }
@@ -58,7 +60,7 @@ class _KidHomeState extends State<KidHome> with SingleTickerProviderStateMixin {
                           width: 340,
                           child:
                               Column(mainAxisSize: MainAxisSize.min, children: [
-                            const Text('⭐ Дөрвөн хэсгээ дуусгасан өдөр'),
+                            const Text('⭐ Хугацааны зорилт биелүүлсэн өдөр'),
                             const SizedBox(height: 16),
                             Row(
                                 children: [
@@ -129,6 +131,7 @@ class _KidHomeState extends State<KidHome> with SingleTickerProviderStateMixin {
                         padding: EdgeInsets.all(
                             MediaQuery.sizeOf(context).width < 380 ? 16 : 24),
                         children: [
+                          if (widget.syncStatus != null) widget.syncStatus!,
                           RepaintBoundary(
                             child: AnimatedBuilder(
                               animation: motion,
@@ -388,11 +391,12 @@ class HappyTooth extends CustomPainter {
     c.drawPath(tooth, p);
     p.style = PaintingStyle.fill;
     p.color = const Color(0xFF355C59);
-    for (final x in [-29.0, 29.0])
+    for (final x in [-29.0, 29.0]) {
       c.drawOval(
           Rect.fromCenter(
               center: Offset(x, -18), width: 10, height: t > .92 ? 2 : 15),
           p);
+    }
     p.color = const Color(0xFFFFC0BC);
     c.drawOval(const Rect.fromLTWH(-55, -6, 22, 11), p);
     c.drawOval(const Rect.fromLTWH(33, -6, 22, 11), p);
@@ -416,11 +420,12 @@ class HappyTooth extends CustomPainter {
             const Rect.fromLTWH(-38, -6, 48, 22), const Radius.circular(7)),
         p);
     p.color = Colors.white;
-    for (int i = 0; i < 6; i++)
+    for (int i = 0; i < 6; i++) {
       c.drawRRect(
           RRect.fromRectAndRadius(
               Rect.fromLTWH(-33 + i * 7, -18, 4, 17), const Radius.circular(2)),
           p);
+    }
     c.restore();
     p.color = Colors.white.withValues(alpha: .75);
     for (int i = 0; i < 5; i++) {

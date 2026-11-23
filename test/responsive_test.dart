@@ -17,8 +17,8 @@ void main() {
           home: KidHome(
               name: 'Бяцхан найз',
               stars: 12,
-              dates: {},
-              gift: {},
+              dates: const {},
+              gift: const {},
               night: false,
               onBrush: () {},
               onSettings: () {})));

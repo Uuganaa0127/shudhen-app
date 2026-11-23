@@ -114,12 +114,22 @@ class _CameraCoachState extends State<CameraCoach>
   String clock(Duration time) =>
       '${time.inMinutes.toString().padLeft(2, '0')}:${(time.inSeconds % 60).toString().padLeft(2, '0')}';
   Future<void> completeSection() async {
-    if (finishing) return;
+    if (finishing || flossOpen) return;
     setState(() {
       finishing = true;
       resetMotion();
     });
-    await widget.onFinish();
+    try {
+      await widget.onFinish();
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          finishing = false;
+          status = 'Хадгалж чадсангүй. Дуусгах товчийг дахин дарна уу.';
+        });
+      }
+      return;
+    }
     if (!mounted) return;
     if (session.complete) {
       setState(() => active = false);
@@ -128,7 +138,7 @@ class _CameraCoachState extends State<CameraCoach>
           builder: (c) => AlertDialog(
                   title: const Text('🌟 Дөрвөн хэсгээ угааж дууслаа!'),
                   content: Text(
-                      'Та инээмсэглэлийн од авлаа. Нийт идэвхтэй хугацаа: ${clock(session.total)}'),
+                      '${session.times.every((t) => t! >= const Duration(seconds: 30)) ? 'Та инээмсэглэлийн од авлаа.' : 'Угаалтыг хадгаллаа. Од авахын тулд хэсэг бүрт 30 секунд хүргээрэй.'} Нийт идэвхтэй хугацаа: ${clock(session.total)}'),
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(c),
@@ -144,7 +154,7 @@ class _CameraCoachState extends State<CameraCoach>
   }
 
   Future<void> floss() async {
-    if (flossOpen) return;
+    if (flossOpen || finishing || session.complete) return;
     resetMotion();
     setState(() => flossOpen = true);
     final done = await showDialog<bool>(
@@ -213,7 +223,7 @@ class _CameraCoachState extends State<CameraCoach>
             child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 8, 20, 12),
                 child: ElevatedButton.icon(
-                  onPressed: !finishing &&
+                  onPressed: !finishing && !flossOpen &&
                           !session.complete &&
                           session.watch.elapsed.inSeconds >= 1
                       ? completeSection

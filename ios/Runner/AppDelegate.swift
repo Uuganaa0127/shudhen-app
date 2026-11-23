@@ -1,7 +1,7 @@
 import UIKit
 import Flutter
 
-@UIApplicationMain
+@main
 @objc class AppDelegate: FlutterAppDelegate {
   override func application(
     _ application: UIApplication,
@@ -11,6 +11,13 @@ import Flutter
       UNUserNotificationCenter.current().delegate = self as UNUserNotificationCenterDelegate
     }
     GeneratedPluginRegistrant.register(with: self)
+    if let controller = window?.rootViewController as? FlutterViewController {
+      let channel = FlutterMethodChannel(name: "shudhen/device", binaryMessenger: controller.binaryMessenger)
+      channel.setMethodCallHandler { call, result in
+        if call.method == "timeZone" { result(TimeZone.current.identifier) }
+        else { result(FlutterMethodNotImplemented) }
+      }
+    }
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 }

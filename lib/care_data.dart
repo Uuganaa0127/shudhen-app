@@ -1,3 +1,4 @@
+// Legacy offline demo helpers; production auth/sync uses connection/.
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -72,8 +73,9 @@ class CareStats {
       final id = e['sessionId'] as String;
       if (!completed.contains(id)) continue;
       final date = e['date'] as String;
-      if (!dates.containsKey(id) || date.compareTo(dates[id]!) > 0)
+      if (!dates.containsKey(id) || date.compareTo(dates[id]!) > 0) {
         dates[id] = date;
+      }
     }
     return dates.values.map((d) => d.substring(0, 10)).toSet();
   }
