@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest.dart' as tzdata;
 import 'package:timezone/timezone.dart' as tz;
 import 'api.dart';
@@ -54,6 +55,7 @@ class CareController extends ChangeNotifier {
   final SessionStore store;
   Connection? connection;
   List<LocalSession> records = [];
+  Map<String, dynamic> rewards = {};
   bool needsRelink = false, syncing = false;
   String? syncMessage;
   DateTime? lastSync;
@@ -90,6 +92,7 @@ class CareController extends ChangeNotifier {
       if (value.baseUrl == api.baseUrl) {
         connection = value;
         needsRelink = !value.expiresAt.isAfter(DateTime.now());
+        await _loadRewards(value.scope);
         await _recover(value.scope);
         records = await store.all(value.scope);
         _restoreLastSync();
@@ -166,12 +169,26 @@ class CareController extends ChangeNotifier {
     needsRelink = false;
     syncMessage = null;
     lastSync = null;
+    await _loadRewards(next.scope);
     await _recover(next.scope);
     records = await store.all(next.scope);
     _restoreLastSync();
     changed();
     await refreshProfile();
     await sync();
+  }
+
+  Future<void> _loadRewards(String scope) async {
+    rewards = {};
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final value = prefs.getString('care.rewards:$scope');
+      if (connection?.scope == scope && value != null) {
+        rewards = Map<String, dynamic>.from(jsonDecode(value));
+      }
+    } catch (_) {
+      /* A cache failure must not block linking or session recovery. */
+    }
   }
 
   Future<void> refreshProfile() async {
@@ -195,7 +212,19 @@ class CareController extends ChangeNotifier {
       await _write(() async {
         if (connection?.token != account.token || _leaving) return;
         await credentials.write(jsonEncode(next.toJson()));
-        if (!_leaving) connection = next;
+        if (!_leaving) {
+          connection = next;
+          rewards = Map<String, dynamic>.from(data['rewards'] as Map? ?? {});
+          try {
+            final prefs = await SharedPreferences.getInstance();
+            await prefs.setString(
+              'care.rewards:${account.scope}',
+              jsonEncode(rewards),
+            );
+          } catch (_) {
+            /* Session delivery must not depend on the gift cache. */
+          }
+        }
       });
       changed();
     } on ApiFailure catch (error) {
@@ -296,6 +325,9 @@ class CareController extends ChangeNotifier {
           break; // Network/5xx/429: retry on resume, timer or explicit action.
         }
       }
+      if (!_leaving && !needsRelink && connection?.token == account.token) {
+        await refreshProfile();
+      }
     } catch (_) {
       syncMessage =
           'Дамжуулалтыг дуусгаж чадсангүй. Бүртгэл утсанд хадгалагдсан.';
@@ -323,6 +355,7 @@ class CareController extends ChangeNotifier {
       await _write(() async {
         await credentials.clear();
         connection = null;
+        rewards = {};
       });
       records = [];
       needsRelink = false;

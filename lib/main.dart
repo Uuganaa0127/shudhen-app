@@ -493,7 +493,7 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
         name: care.connection!.name,
         stars: care.stars,
         dates: care.dates,
-        gift: const {},
+        gift: care.rewards,
         night: night,
         syncStatus: syncStatus(),
         onBrush: openCamera,
@@ -540,7 +540,9 @@ class _HomeState extends State<Home> with WidgetsBindingObserver {
                   onTap: () async {
                     try {
                       try {
-                        if (reminders.supported) await reminders.plugin.cancelAll();
+                        if (reminders.supported) {
+                          await reminders.plugin.cancelAll();
+                        }
                       } catch (_) { /* Notification errors must not prevent logout. */ }
                       await care.disconnect();
                     } catch (_) {

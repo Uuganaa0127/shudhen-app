@@ -105,8 +105,10 @@ void main() {
       final requests = <String>[];
       final care = testController(
         respond: (request) async {
-          requests.add(request.body);
-          if (requests.length == 1) throw const ApiFailure('response lost');
+          if (request.url.path.endsWith('/sessions')) {
+            requests.add(request.body);
+            if (requests.length == 1) throw const ApiFailure('response lost');
+          }
           return defaultReply(request);
         },
       );

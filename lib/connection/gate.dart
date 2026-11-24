@@ -231,10 +231,17 @@ class _LinkScreenState extends State<LinkScreen> {
       controller: controller,
       enabled: !busy,
       obscureText: secret,
+      textCapitalization: controller == token
+          ? TextCapitalization.characters
+          : TextCapitalization.none,
       autocorrect: false,
       enableSuggestions: !secret,
       maxLength: max,
-      decoration: InputDecoration(labelText: label, counterText: ''),
+      decoration: InputDecoration(
+        labelText: label,
+        hintText: controller == token ? 'Жишээ: A7KM-92TX-R4EP' : null,
+        counterText: '',
+      ),
       validator: (v) =>
           v == null || v.trim().isEmpty ? '$label оруулна уу' : null,
     ),
@@ -264,7 +271,7 @@ class _LinkScreenState extends State<LinkScreen> {
                   key: form,
                   child: Column(
                     children: [
-                      input(token, 'Урилгын код', 43, secret: true),
+                      input(token, 'Урилгын код', 64),
                       input(guardian, 'Асран хамгаалагчийн нэр', 150),
                       input(relationship, 'Хүүхэдтэй ямар хамааралтай вэ?', 50),
                       input(device, 'Төхөөрөмжийн нэр', 100),

@@ -85,7 +85,7 @@ void main() {
       await tester.ensureVisible(field);
       await tester.enterText(
         field,
-        ['invitation', 'Parent', 'Mother', 'Phone'][i],
+        ['A7KM-92TX-R4EP', 'Parent', 'Mother', 'Phone'][i],
       );
     }
     await tester.scrollUntilVisible(

@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'reward_cards.dart';
 import 'gift_progress.dart';
 
 class KidHome extends StatefulWidget {
@@ -118,9 +119,6 @@ class _KidHomeState extends State<KidHome> with SingleTickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
-    final target = widget.gift['days'] == 30 ? 30 : 7;
-    final progress = GiftProgress(widget.dates, target, DateTime.now());
-    final title = widget.gift['name'] as String?;
     return Scaffold(
         backgroundColor: const Color(0xFFF7F3EB),
         body: SafeArea(
@@ -288,71 +286,11 @@ class _KidHomeState extends State<KidHome> with SingleTickerProviderStateMixin {
                                       fontSize: 25,
                                       fontWeight: FontWeight.w800))),
                           const SizedBox(height: 25),
-                          Material(
-                              color: const Color(0xFFEAE3F7),
-                              borderRadius: BorderRadius.circular(26),
-                              child: InkWell(
-                                  onTap: calendar,
-                                  borderRadius: BorderRadius.circular(26),
-                                  child: Padding(
-                                      padding: const EdgeInsets.all(22),
-                                      child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: [
-                                            Row(children: [
-                                              const Text('🎁',
-                                                  style:
-                                                      TextStyle(fontSize: 42)),
-                                              const SizedBox(width: 14),
-                                              Expanded(
-                                                  child: Text(
-                                                      progress.remaining == 0
-                                                          ? 'Бэлгийн зорилт биеллээ!'
-                                                          : 'Бэлэг хүртэл ${progress.remaining} өдөр',
-                                                      style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.w900,
-                                                          fontSize: 22,
-                                                          color: Color(
-                                                              0xFF61518A)))),
-                                              const Icon(
-                                                  Icons.calendar_month_rounded,
-                                                  color: Color(0xFF61518A))
-                                            ]),
-                                            const SizedBox(height: 16),
-                                            ClipRRect(
-                                                borderRadius:
-                                                    BorderRadius.circular(10),
-                                                child: LinearProgressIndicator(
-                                                    value: (progress.streak /
-                                                            target)
-                                                        .clamp(0, 1),
-                                                    minHeight: 12,
-                                                    backgroundColor:
-                                                        Colors.white,
-                                                    color: const Color(
-                                                        0xFF9680C5))),
-                                            const SizedBox(height: 12),
-                                            Text(
-                                                '${progress.streak} / $target дараалсан өдөр',
-                                                style: const TextStyle(
-                                                    fontWeight: FontWeight.w700,
-                                                    color: Color(0xFF61518A))),
-                                            const SizedBox(height: 6),
-                                            Text(
-                                                title != null &&
-                                                        title.isNotEmpty
-                                                    ? title
-                                                    : 'Виртуал одон',
-                                                style: const TextStyle(
-                                                    color: Color(0xFF61518A))),
-                                            if (progress.remaining == 0)
-                                              const Text(
-                                                  'Эмчтэйгээ бэлгээ ярилцаарай.',
-                                                  style: TextStyle(
-                                                      color: Color(0xFF61518A)))
-                                          ]))))
+                          TextButton.icon(
+                              onPressed: calendar,
+                              icon: const Icon(Icons.calendar_month_rounded),
+                              label: const Text('Угаалтын хуанли')),
+                          RewardCards(data: widget.gift),
                         ])))));
   }
 }
